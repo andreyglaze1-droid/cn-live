@@ -1,4 +1,4 @@
-name: Nickelodeon TV Masked
+name: Nickelodeon Ultra HD 7K
 
 on:
   schedule:
@@ -12,29 +12,39 @@ jobs:
       - name: Install FFmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg curl
 
-      - name: Start Protected Stream
+      - name: Start Ultra Stream
         env:
           URL: ${{ secrets.STREAM_URL_NICK }}
           KEY: ${{ secrets.TELEGRAM_KEY_NICK }}
         run: |
           while true; do
-            echo "🕵️‍♂️ Запуск маскировки... Пытаемся обойти 403 Forbidden"
+            echo "🔎 Проверка стабильной ссылки..."
             
-            # Магия маскировки:
-            # -user_agent: притворяемся браузером
-            # -headers: подделываем источник перехода (Referer)
-            # -reconnect: заставляем ffmpeg не сдаваться, если сеть мигнет
+            STATUS=$(curl -o /dev/null -s -w "%{http_code}" -I -L "$URL" \
+              -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            
+            if [ "$STATUS" -ne 200 ] && [ "$STATUS" -ne 302 ]; then
+              echo "❌ Ошибка ссылки! Код: $STATUS. Ждем 30 сек..."
+              sleep 30
+              continue
+            fi
+
+            echo "✅ Ссылка активна! Запуск потока 7000kbps..."
+            
+            # -protocol_whitelist: разрешаем все виды соединений
+            # -b:v 7000k: устанавливаем мощный битрейт
+            # -preset veryfast: баланс между качеством и нагрузкой на CPU GitHub
             ffmpeg -re \
-              -user_agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.129 Safari/537.36" \
+              -protocol_whitelist file,http,https,tcp,tls \
+              -user_agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
               -headers "Referer: https://www.google.com/" \
-              -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
               -i "$URL" \
-              -vcodec libx264 -preset superfast -b:v 4500k -maxrate 6000k -bufsize 9000k \
-              -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
-              -f flv "$KEY" || true
-            
-            echo "⚠️ Стрим упал. Возможно, ссылка протухла или бан по IP. Рестарт через 10 сек..."
-            sleep 10
+              -vcodec libx264 -preset veryfast -b:v 7000k -maxrate 9000k -bufsize 14000k \
+              -pix_fmt yuv420p -g 50 -c:a aac -b:a 192k -ar 48000 \
+              -f flv "$KEY" || echo "⚠️ Поток прерван."
+
+            echo "🔄 Перезапуск через 5 секунд..."
+            sleep 5
           done
