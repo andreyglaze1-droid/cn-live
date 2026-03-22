@@ -21,30 +21,43 @@ jobs:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_KEY_NARCOS }}
         run: |
           while true; do
-            echo "Searching for files in torrent..."
-            # Получаем список файлов и фильтруем видео
-            FILES=$(webtorrent "$MAGNET_LINK" --list | grep -iE '\.(mkv|mp4|avi)$' | awk '{print $NF}')
+            echo "🔎 Ищем пиров и список файлов в торренте (ждем 40 сек)..."
             
+            # Даем Webtorrent время зацепиться за сидов и сохраняем список
+            timeout 45s webtorrent "$MAGNET_LINK" --list > torrent_list.txt || true
+            
+            # Вырезаем только названия видеофайлов (убираем лишние колонки и пробелы)
+            # Мы ищем строки с расширениями и берем название файла целиком
+            FILES=$(grep -iE '\.(mkv|mp4|avi)$' torrent_list.txt | sed 's/^[[:space:]]*//' | awk '{print substr($0, index($0,$4))}' | sort)
+
             if [ -z "$FILES" ]; then
-              echo "Error: No video files found in torrent. Checking peers..."
+              echo "❌ Видеофайлы не найдены или сидов слишком мало."
+              echo "--- Содержимое торрента для отладки ---"
+              cat torrent_list.txt
+              echo "---------------------------------------"
+              echo "Пробуем снова через 30 секунд..."
               sleep 30
               continue
             fi
 
-            echo "Files found. Starting loop..."
-            while read -r FILE; do
-              echo "Now streaming: $FILE"
-              # Стримим конкретную серию
+            echo "✅ Найдено серий для марафона:"
+            echo "$FILES"
+
+            # Запускаем цикл по каждой найденной серии
+            echo "$FILES" | while read -r FILE; do
+              echo "🎥 СТРИМИМ СЕРИЮ: $FILE"
+              
+              # Запускаем Webtorrent в режиме стрима и передаем в FFmpeg
               webtorrent "$MAGNET_LINK" --select "$FILE" --stdout | \
               ffmpeg -re -i pipe:0 \
               -vcodec libx264 -preset superfast -b:v 6000k -maxrate 8000k -bufsize 12000k \
               -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
               -f flv "$TELEGRAM_KEY" || true
               
-              echo "Series $FILE finished. Next in 10s..."
+              echo "⌛ Серия '$FILE' завершена. Пауза 10 сек перед следующей..."
               sleep 10
-            done <<< "$FILES"
+            done
             
-            echo "All episodes finished. Restarting marathon..."
-            sleep 30
+            echo "🏁 Весь список проигран. Перезапуск марафона через минуту..."
+            sleep 60
           done
