@@ -1,8 +1,6 @@
-name: Nickelodeon Ultra HD 7K
+name: Nickelodeon Final Boss 7K
 
 on:
-  schedule:
-    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,41 +8,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install FFmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg curl
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Start Ultra Stream
+      - name: Start Stream with Full Headers
         env:
           URL: ${{ secrets.STREAM_URL_NICK }}
           KEY: ${{ secrets.TELEGRAM_KEY_NICK }}
         run: |
           while true; do
-            echo "🔎 Проверка стабильной ссылки..."
+            echo "🚀 Запуск потока с имитацией браузера..."
             
-            STATUS=$(curl -o /dev/null -s -w "%{http_code}" -I -L "$URL" \
-              -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-            
-            if [ "$STATUS" -ne 200 ] && [ "$STATUS" -ne 302 ]; then
-              echo "❌ Ошибка ссылки! Код: $STATUS. Ждем 30 сек..."
-              sleep 30
-              continue
-            fi
-
-            echo "✅ Ссылка активна! Запуск потока 7000kbps..."
-            
-            # -protocol_whitelist: разрешаем все виды соединений
-            # -b:v 7000k: устанавливаем мощный битрейт
-            # -preset veryfast: баланс между качеством и нагрузкой на CPU GitHub
+            # Мы объединяем все заголовки из твоего curl в одну строку для FFmpeg
+            # Обрати внимание: заголовки разделяются символом \r\n
             ffmpeg -re \
               -protocol_whitelist file,http,https,tcp,tls \
-              -user_agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
-              -headers "Referer: https://www.google.com/" \
+              -user_agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" \
+              -headers "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"$'\r\n'"Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"$'\r\n'"Cache-Control: max-age=0"$'\r\n'"Connection: keep-alive"$'\r\n'"Upgrade-Insecure-Requests: 1" \
               -i "$URL" \
               -vcodec libx264 -preset veryfast -b:v 7000k -maxrate 9000k -bufsize 14000k \
               -pix_fmt yuv420p -g 50 -c:a aac -b:a 192k -ar 48000 \
-              -f flv "$KEY" || echo "⚠️ Поток прерван."
+              -f flv "$KEY" || echo "⚠️ Сервер отклонил запрос. Пробую снова..."
 
-            echo "🔄 Перезапуск через 5 секунд..."
-            sleep 5
+            echo "🔄 Рестарт через 10 секунд..."
+            sleep 10
           done
