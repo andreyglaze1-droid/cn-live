@@ -1,4 +1,4 @@
-name: Nickelodeon_ULTRA_HD
+name: Channel_Replacement_Ultra
 
 on:
   workflow_dispatch:
@@ -10,26 +10,26 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Start Ultra Stream
+      - name: Start Replacement Stream
         env:
           URL: ${{ secrets.STREAM_URL_NICK }}
           KEY: ${{ secrets.TELEGRAM_KEY_NICK }}
         run: |
           while true; do
-            echo "🚀 Поток пошел! Битрейт 7500k, режим 'Без мыла'..."
+            echo "🚀 Замена запущена! Вещаем новый канал в Full HD..."
             
-            # Команда настроена под твой последний curl
             ffmpeg -re \
+              -thread_queue_size 1024 \
               -protocol_whitelist file,http,https,tcp,tls \
               -user_agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" \
               -headers "Accept: */*"$'\r\n'"Origin: https://ritsatv.ru"$'\r\n'"Referer: https://ritsatv.ru/"$'\r\n'"Sec-Fetch-Dest: empty"$'\r\n'"Sec-Fetch-Mode: cors"$'\r\n'"Sec-Fetch-Site: cross-site" \
               -i "$URL" \
               -vf "unsharp=3:3:0.8:3:3:0.4" \
-              -vcodec libx264 -preset fast -crf 17 -tune animation \
-              -b:v 7500k -maxrate 10000k -bufsize 15000k \
+              -vcodec libx264 -preset superfast -crf 17 -tune animation \
+              -b:v 5500k -maxrate 7500k -bufsize 12000k \
               -pix_fmt yuv420p -g 50 \
-              -c:a aac -b:a 192k -ar 48000 \
-              -f flv "$KEY" || echo "⚠️ Ошибка! Возможно, токен в ссылке протух."
+              -c:a aac -b:a 128k -ar 44100 \
+              -f flv "$KEY" || echo "⚠️ Токен истек, ждем рестарта..."
 
             echo "🔄 Перезапуск через 10 секунд..."
             sleep 10
