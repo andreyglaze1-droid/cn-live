@@ -1,0 +1,39 @@
+name: Nicktoons_Sharp_HD
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Start Nicktoons
+        env:
+          URL: ${{ secrets.STREAM_URL_NICKTOONS }}
+          KEY: ${{ secrets.TELEGRAM_KEY_NICKTOONS }}
+        run: |
+          # Проверка секретов
+          if [ -z "$URL" ]; then echo "❌ STREAM_URL_NICKTOONS пуст!"; exit 1; fi
+          if [ -z "$KEY" ]; then echo "❌ TELEGRAM_KEY_NICKTOONS пуст!"; exit 1; fi
+
+          while true; do
+            echo "🚀 Nicktoons пошёл! Режим 'Бритва' (5500kbps)..."
+            
+            ffmpeg -re \
+              -thread_queue_size 2048 \
+              -protocol_whitelist file,http,https,tcp,tls \
+              -user_agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" \
+              -headers "Accept: */*"$'\r\n'"Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"$'\r\n'"Origin: https://ritsatv.ru"$'\r\n'"Referer: https://ritsatv.ru/"$'\r\n'"Sec-Fetch-Dest: empty"$'\r\n'"Sec-Fetch-Mode: cors"$'\r\n'"Sec-Fetch-Site: cross-site"$'\r\n'"sec-ch-ua: \"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Google Chrome\";v=\"146\""$'\r\n'"sec-ch-ua-mobile: ?0"$'\r\n'"sec-ch-ua-platform: \"Linux\""$'\r\n' \
+              -i "$URL" \
+              -vf "unsharp=3:3:1.1:3:3:0.4" \
+              -vcodec libx264 -preset superfast -crf 17 -tune animation \
+              -b:v 5500k -maxrate 7000k -bufsize 12000k \
+              -pix_fmt yuv420p -g 50 \
+              -c:a aac -b:a 128k -ar 44100 \
+              -f flv "$KEY" || echo "⚠️ Токен сдох или обрыв связи. Ждем 10 сек..."
+
+            sleep 10
+          done
