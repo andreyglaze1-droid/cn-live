@@ -1,8 +1,6 @@
-name: CN Worldwide Live Stream
+name: Channel_15_Ultra_HD
 
 on:
-  schedule:
-    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -12,17 +10,27 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Start Streaming
+      - name: Start Channel 15 Stream
         env:
-          STREAM_URL: ${{ secrets.STREAM_URL }}
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_KEY }}
+          URL: ${{ secrets.STREAM_URL_CHAN15 }}
+          KEY: ${{ secrets.TELEGRAM_KEY_CHAN15 }}
         run: |
           while true; do
-            ffmpeg -re -i "$STREAM_URL" \
-            -vcodec libx264 -preset superfast -b:v 6000k -maxrate 8000k -bufsize 12000k \
-            -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
-            -f flv "$TELEGRAM_KEY" || true
+            echo "📡 Запуск Канала 15... Имитация magtv.top"
             
-            echo "Stream crashed or disconnected. Restarting in 5 seconds..."
-            sleep 5
+            ffmpeg -re \
+              -thread_queue_size 2048 \
+              -protocol_whitelist file,http,https,tcp,tls \
+              -user_agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" \
+              -headers "Accept: */*"$'\r\n'"Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"$'\r\n'"Origin: null"$'\r\n'"Referer: http://magtv.top/"$'\r\n'"Sec-Fetch-Dest: empty"$'\r\n'"Sec-Fetch-Mode: cors"$'\r\n'"Sec-Fetch-Site: cross-site"$'\r\n' \
+              -i "$URL" \
+              -vf "unsharp=3:3:0.8:3:3:0.4" \
+              -vcodec libx264 -preset superfast -crf 18 -tune film \
+              -b:v 5500k -maxrate 7500k -bufsize 12000k \
+              -pix_fmt yuv420p -g 50 \
+              -c:a aac -b:a 128k -ar 44100 \
+              -f flv "$KEY" || echo "⚠️ Поток прерван (токен?)."
+
+            echo "🔄 Перезапуск через 10 секунд..."
+            sleep 10
           done
