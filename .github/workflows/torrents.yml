@@ -1,47 +1,33 @@
-name: Narcos Aria2 Extreme
+name: Narcos TV Final
 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *' # Перезапуск каждые 6 часов
+  workflow_dispatch: # Ручной запуск
 
 jobs:
   stream:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg aria2
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Start Aria2 Stream
+      - name: Start Narcos Marathon
         env:
-          MAGNET_LINK: ${{ secrets.MAGNET_LINK_NARCOS }}
+          STREAM_URL: ${{ secrets.STREAM_URL_NARCOS }}
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_KEY_NARCOS }}
         run: |
-          # 1. Запускаем скачивание первой серии в фоне
-          # --seed-time=0 (не раздаем), --summary-interval=1 (часто обновляем статус)
-          aria2c --allow-overwrite=true --seed-time=0 --max-download-limit=10M \
-          --bt-metadata-only=false --bt-save-metadata=true \
-          --follow-torrent=mem "$MAGNET_LINK" &
-          
-          sleep 30 # Даем 30 секунд на поиск пиров через DHT
-          
           while true; do
-            # Ищем самый большой файл, который начал качаться (это и есть серия)
-            VIDEO_FILE=$(find . -maxdepth 2 -type f -name "*.mkv" -o -name "*.mp4" | head -n 1)
+            echo "🚀 Запуск трансляции Narcos в 1080p (6000k)..."
             
-            if [ -z "$VIDEO_FILE" ]; then
-              echo "🔎 Все еще ищем файл в торренте..."
-              sleep 10
-              continue
-            fi
-            
-            echo "✅ Нашелся файл: $VIDEO_FILE. Начинаем стрим прямо во время загрузки!"
-            
-            # Стримим файл, пока он качается (tail -f передает данные в ffmpeg)
-            # Это имитация стриминга
-            ffmpeg -re -i "$VIDEO_FILE" \
-            -vcodec libx264 -preset superfast -b:v 6000k \
+            # -re: читать в реальном времени
+            # -stream_loop -1: крутить файл бесконечно (если хочешь 24/7 одну серию)
+            # Если хочешь, чтобы серия просто прошла один раз, убери -stream_loop -1
+            ffmpeg -re -stream_loop -1 -i "$STREAM_URL" \
+            -vcodec libx264 -preset superfast -b:v 6000k -maxrate 8000k -bufsize 12000k \
+            -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
             -f flv "$TELEGRAM_KEY" || true
             
+            echo "🔄 Обрыв связи или конец файла. Перезапуск через 10 секунд..."
             sleep 10
           done
