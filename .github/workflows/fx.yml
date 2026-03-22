@@ -1,0 +1,38 @@
+name: FX_HD_ULTRA_STREAM
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Start FX HD Stream
+        env:
+          URL: ${{ secrets.STREAM_URL_FX }}
+          KEY: ${{ secrets.TELEGRAM_KEY_FX }}
+        run: |
+          while true; do
+            echo "🎬 Запуск FX HD... Режим 'Кинотеатр' (7500kbps)..."
+            
+            # Настройка для максимальной четкости в фильмах
+            # flags=lanczos дает лучший апскейл для кино
+            # tune film сохраняет детализацию кожи и текстур
+            ffmpeg -re \
+              -protocol_whitelist file,http,https,tcp,tls \
+              -user_agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" \
+              -headers "Accept: */*"$'\r\n'"Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"$'\r\n'"Origin: https://player.uspeh-bil.ru"$'\r\n'"Referer: https://player.uspeh-bil.ru/"$'\r\n'"Sec-Fetch-Dest: empty"$'\r\n'"Sec-Fetch-Mode: cors"$'\r\n'"Sec-Fetch-Site: cross-site"$'\r\n'"sec-ch-ua: \"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Google Chrome\";v=\"146\""$'\r\n'"sec-ch-ua-mobile: ?0"$'\r\n'"sec-ch-ua-platform: \"Linux\"" \
+              -i "$URL" \
+              -vf "scale=1920:1080:flags=lanczos,unsharp=3:3:0.7:3:3:0.3" \
+              -vcodec libx264 -preset fast -crf 16 -tune film \
+              -b:v 7500k -maxrate 10000k -bufsize 15000k \
+              -pix_fmt yuv420p -g 50 \
+              -c:a aac -b:a 192k -ar 48000 \
+              -f flv "$KEY" || echo "⚠️ Поток прерван. Проверь токен!"
+
+            echo "🔄 Перезагрузка через 10 секунд..."
+            sleep 10
+          done
