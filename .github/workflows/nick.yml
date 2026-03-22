@@ -1,4 +1,4 @@
-name: Nickelodeon Final Boss 7K
+name: Nickelodeon_ULTRA_HD
 
 on:
   workflow_dispatch:
@@ -10,25 +10,27 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Start Stream with Full Headers
+      - name: Start Ultra Stream
         env:
           URL: ${{ secrets.STREAM_URL_NICK }}
           KEY: ${{ secrets.TELEGRAM_KEY_NICK }}
         run: |
           while true; do
-            echo "🚀 Запуск потока с имитацией браузера..."
+            echo "🚀 Поток пошел! Битрейт 7500k, режим 'Без мыла'..."
             
-            # Мы объединяем все заголовки из твоего curl в одну строку для FFmpeg
-            # Обрати внимание: заголовки разделяются символом \r\n
+            # Команда настроена под твой последний curl
             ffmpeg -re \
               -protocol_whitelist file,http,https,tcp,tls \
               -user_agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" \
-              -headers "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"$'\r\n'"Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"$'\r\n'"Cache-Control: max-age=0"$'\r\n'"Connection: keep-alive"$'\r\n'"Upgrade-Insecure-Requests: 1" \
+              -headers "Accept: */*"$'\r\n'"Origin: https://ritsatv.ru"$'\r\n'"Referer: https://ritsatv.ru/"$'\r\n'"Sec-Fetch-Dest: empty"$'\r\n'"Sec-Fetch-Mode: cors"$'\r\n'"Sec-Fetch-Site: cross-site" \
               -i "$URL" \
-              -vcodec libx264 -preset veryfast -b:v 7000k -maxrate 9000k -bufsize 14000k \
-              -pix_fmt yuv420p -g 50 -c:a aac -b:a 192k -ar 48000 \
-              -f flv "$KEY" || echo "⚠️ Сервер отклонил запрос. Пробую снова..."
+              -vf "unsharp=3:3:0.8:3:3:0.4" \
+              -vcodec libx264 -preset fast -crf 17 -tune animation \
+              -b:v 7500k -maxrate 10000k -bufsize 15000k \
+              -pix_fmt yuv420p -g 50 \
+              -c:a aac -b:a 192k -ar 48000 \
+              -f flv "$KEY" || echo "⚠️ Ошибка! Возможно, токен в ссылке протух."
 
-            echo "🔄 Рестарт через 10 секунд..."
+            echo "🔄 Перезапуск через 10 секунд..."
             sleep 10
           done
