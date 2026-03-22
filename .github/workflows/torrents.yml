@@ -1,8 +1,6 @@
-name: Narcos Torrent Marathon
+name: Narcos Aria2 Extreme
 
 on:
-  schedule:
-    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -12,54 +10,38 @@ jobs:
       - name: Install Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
-          sudo npm install -g webtorrent-cli
+          sudo apt-get install -y ffmpeg aria2
 
-      - name: Start Marathon
+      - name: Start Aria2 Stream
         env:
           MAGNET_LINK: ${{ secrets.MAGNET_LINK_NARCOS }}
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_KEY_NARCOS }}
         run: |
+          # 1. Запускаем скачивание первой серии в фоне
+          # --seed-time=0 (не раздаем), --summary-interval=1 (часто обновляем статус)
+          aria2c --allow-overwrite=true --seed-time=0 --max-download-limit=10M \
+          --bt-metadata-only=false --bt-save-metadata=true \
+          --follow-torrent=mem "$MAGNET_LINK" &
+          
+          sleep 30 # Даем 30 секунд на поиск пиров через DHT
+          
           while true; do
-            echo "🔎 Ищем пиров и файлы в торренте..."
+            # Ищем самый большой файл, который начал качаться (это и есть серия)
+            VIDEO_FILE=$(find . -maxdepth 2 -type f -name "*.mkv" -o -name "*.mp4" | head -n 1)
             
-            # Используем команду 'stdout' с флагом '--list', чтобы увидеть файлы
-            # Даем время на поиск пиров (timeout 45s)
-            timeout 45s webtorrent "$MAGNET_LINK" --list > torrent_files.txt || true
-            
-            # Очищаем список от мусора и берем только названия видеофайлов
-            FILES=$(grep -iE '\.(mkv|mp4|avi)$' torrent_files.txt | sed 's/^[[:space:]]*//' | awk '{print $NF}' | sort)
-
-            if [ -z "$FILES" ]; then
-              echo "❌ Файлы не найдены. Пробуем альтернативную команду..."
-              # План Б: если --list не сработал, пробуем просто распарсить инфо
-              timeout 30s webtorrent "$MAGNET_LINK" > torrent_files.txt || true
-              FILES=$(grep -iE '\.(mkv|mp4|avi)$' torrent_files.txt | awk '{print $NF}' | sort)
-            fi
-
-            if [ -z "$FILES" ]; then
-              echo "⚠️ Не удалось получить список. Содержимое лога:"
-              cat torrent_files.txt
-              sleep 30
+            if [ -z "$VIDEO_FILE" ]; then
+              echo "🔎 Все еще ищем файл в торренте..."
+              sleep 10
               continue
             fi
-
-            echo "✅ Найдено серий:"
-            echo "$FILES"
-
-            echo "$FILES" | while read -r FILE; do
-              echo "🎥 СТРИМИМ: $FILE"
-              
-              # Стримим конкретный файл через пайп в ffmpeg
-              webtorrent "$MAGNET_LINK" --select "$FILE" --stdout | \
-              ffmpeg -re -i pipe:0 \
-              -vcodec libx264 -preset superfast -b:v 6000k -maxrate 8000k -bufsize 12000k \
-              -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
-              -f flv "$TELEGRAM_KEY" || true
-              
-              echo "⌛ Серия завершена. Пауза 10 сек..."
-              sleep 10
-            done
             
-            sleep 60
+            echo "✅ Нашелся файл: $VIDEO_FILE. Начинаем стрим прямо во время загрузки!"
+            
+            # Стримим файл, пока он качается (tail -f передает данные в ffmpeg)
+            # Это имитация стриминга
+            ffmpeg -re -i "$VIDEO_FILE" \
+            -vcodec libx264 -preset superfast -b:v 6000k \
+            -f flv "$TELEGRAM_KEY" || true
+            
+            sleep 10
           done
