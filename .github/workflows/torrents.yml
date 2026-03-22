@@ -1,0 +1,50 @@
+name: Narcos Torrent Marathon
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          sudo npm install -g webtorrent-cli
+
+      - name: Start Marathon
+        env:
+          MAGNET_LINK: ${{ secrets.MAGNET_LINK_NARCOS }}
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_KEY_NARCOS }}
+        run: |
+          while true; do
+            echo "Searching for files in torrent..."
+            # Получаем список файлов и фильтруем видео
+            FILES=$(webtorrent "$MAGNET_LINK" --list | grep -iE '\.(mkv|mp4|avi)$' | awk '{print $NF}')
+            
+            if [ -z "$FILES" ]; then
+              echo "Error: No video files found in torrent. Checking peers..."
+              sleep 30
+              continue
+            fi
+
+            echo "Files found. Starting loop..."
+            while read -r FILE; do
+              echo "Now streaming: $FILE"
+              # Стримим конкретную серию
+              webtorrent "$MAGNET_LINK" --select "$FILE" --stdout | \
+              ffmpeg -re -i pipe:0 \
+              -vcodec libx264 -preset superfast -b:v 6000k -maxrate 8000k -bufsize 12000k \
+              -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
+              -f flv "$TELEGRAM_KEY" || true
+              
+              echo "Series $FILE finished. Next in 10s..."
+              sleep 10
+            done <<< "$FILES"
+            
+            echo "All episodes finished. Restarting marathon..."
+            sleep 30
+          done
