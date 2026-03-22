@@ -21,7 +21,8 @@ jobs:
             ffmpeg -re -i "$STREAM_URL" \
             -vcodec libx264 -preset superfast -b:v 6000k -maxrate 8000k -bufsize 12000k \
             -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
-            -f flv "$TELEGRAM_KEY"
-            echo "Stream crashed, restarting in 5 seconds..."
+            -f flv "$TELEGRAM_KEY" || true
+            
+            echo "Stream crashed or disconnected. Restarting in 5 seconds..."
             sleep 5
           done
