@@ -1,4 +1,4 @@
-name: Nickelodeon Stream
+name: Nickelodeon TV Masked
 
 on:
   schedule:
@@ -10,20 +10,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
-      - name: Start Nick Stream
+      - name: Start Protected Stream
         env:
-          STREAM_URL: ${{ secrets.STREAM_URL_NICK }}
-          TELEGRAM_KEY: ${{ secrets.TELEGRAM_KEY_NICK }}
+          URL: ${{ secrets.STREAM_URL_NICK }}
+          KEY: ${{ secrets.TELEGRAM_KEY_NICK }}
         run: |
           while true; do
-            # Установил битрейт 6000k для идеальной картинки
-            ffmpeg -re -i "$STREAM_URL" \
-            -vcodec libx264 -preset superfast -b:v 6000k -maxrate 8000k -bufsize 12000k \
-            -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
-            -f flv "$TELEGRAM_KEY" || true
+            echo "🕵️‍♂️ Запуск маскировки... Пытаемся обойти 403 Forbidden"
             
-            echo "Nick stream crashed or disconnected. Restarting in 5 seconds..."
-            sleep 5
+            # Магия маскировки:
+            # -user_agent: притворяемся браузером
+            # -headers: подделываем источник перехода (Referer)
+            # -reconnect: заставляем ffmpeg не сдаваться, если сеть мигнет
+            ffmpeg -re \
+              -user_agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.129 Safari/537.36" \
+              -headers "Referer: https://www.google.com/" \
+              -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 \
+              -i "$URL" \
+              -vcodec libx264 -preset superfast -b:v 4500k -maxrate 6000k -bufsize 9000k \
+              -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
+              -f flv "$KEY" || true
+            
+            echo "⚠️ Стрим упал. Возможно, ссылка протухла или бан по IP. Рестарт через 10 сек..."
+            sleep 10
           done
