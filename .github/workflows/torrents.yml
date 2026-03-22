@@ -21,43 +21,45 @@ jobs:
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_KEY_NARCOS }}
         run: |
           while true; do
-            echo "🔎 Ищем пиров и список файлов в торренте (ждем 40 сек)..."
+            echo "🔎 Ищем пиров и файлы в торренте..."
             
-            # Даем Webtorrent время зацепиться за сидов и сохраняем список
-            timeout 45s webtorrent "$MAGNET_LINK" --list > torrent_list.txt || true
+            # Используем команду 'stdout' с флагом '--list', чтобы увидеть файлы
+            # Даем время на поиск пиров (timeout 45s)
+            timeout 45s webtorrent "$MAGNET_LINK" --list > torrent_files.txt || true
             
-            # Вырезаем только названия видеофайлов (убираем лишние колонки и пробелы)
-            # Мы ищем строки с расширениями и берем название файла целиком
-            FILES=$(grep -iE '\.(mkv|mp4|avi)$' torrent_list.txt | sed 's/^[[:space:]]*//' | awk '{print substr($0, index($0,$4))}' | sort)
+            # Очищаем список от мусора и берем только названия видеофайлов
+            FILES=$(grep -iE '\.(mkv|mp4|avi)$' torrent_files.txt | sed 's/^[[:space:]]*//' | awk '{print $NF}' | sort)
 
             if [ -z "$FILES" ]; then
-              echo "❌ Видеофайлы не найдены или сидов слишком мало."
-              echo "--- Содержимое торрента для отладки ---"
-              cat torrent_list.txt
-              echo "---------------------------------------"
-              echo "Пробуем снова через 30 секунд..."
+              echo "❌ Файлы не найдены. Пробуем альтернативную команду..."
+              # План Б: если --list не сработал, пробуем просто распарсить инфо
+              timeout 30s webtorrent "$MAGNET_LINK" > torrent_files.txt || true
+              FILES=$(grep -iE '\.(mkv|mp4|avi)$' torrent_files.txt | awk '{print $NF}' | sort)
+            fi
+
+            if [ -z "$FILES" ]; then
+              echo "⚠️ Не удалось получить список. Содержимое лога:"
+              cat torrent_files.txt
               sleep 30
               continue
             fi
 
-            echo "✅ Найдено серий для марафона:"
+            echo "✅ Найдено серий:"
             echo "$FILES"
 
-            # Запускаем цикл по каждой найденной серии
             echo "$FILES" | while read -r FILE; do
-              echo "🎥 СТРИМИМ СЕРИЮ: $FILE"
+              echo "🎥 СТРИМИМ: $FILE"
               
-              # Запускаем Webtorrent в режиме стрима и передаем в FFmpeg
+              # Стримим конкретный файл через пайп в ffmpeg
               webtorrent "$MAGNET_LINK" --select "$FILE" --stdout | \
               ffmpeg -re -i pipe:0 \
               -vcodec libx264 -preset superfast -b:v 6000k -maxrate 8000k -bufsize 12000k \
               -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
               -f flv "$TELEGRAM_KEY" || true
               
-              echo "⌛ Серия '$FILE' завершена. Пауза 10 сек перед следующей..."
+              echo "⌛ Серия завершена. Пауза 10 сек..."
               sleep 10
             done
             
-            echo "🏁 Весь список проигран. Перезапуск марафона через минуту..."
             sleep 60
           done
