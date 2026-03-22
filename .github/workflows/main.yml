@@ -2,8 +2,8 @@ name: CN Worldwide Live Stream
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # Перезапуск каждые 6 часов
-  workflow_dispatch:      # Кнопка ручного запуска
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   stream:
@@ -17,7 +17,11 @@ jobs:
           STREAM_URL: ${{ secrets.STREAM_URL }}
           TELEGRAM_KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
-          ffmpeg -re -i "$STREAM_URL" \
-          -vcodec libx264 -preset superfast -b:v 6000k -maxrate 8000k -bufsize 12000k \
-          -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
-          -f flv "$TELEGRAM_KEY"
+          while true; do
+            ffmpeg -re -i "$STREAM_URL" \
+            -vcodec libx264 -preset superfast -b:v 6000k -maxrate 8000k -bufsize 12000k \
+            -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
+            -f flv "$TELEGRAM_KEY"
+            echo "Stream crashed, restarting in 5 seconds..."
+            sleep 5
+          done
