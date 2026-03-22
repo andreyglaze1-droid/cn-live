@@ -1,0 +1,29 @@
+name: Nickelodeon Stream
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Start Nick Stream
+        env:
+          STREAM_URL: ${{ secrets.STREAM_URL_NICK }}
+          TELEGRAM_KEY: ${{ secrets.TELEGRAM_KEY_NICK }}
+        run: |
+          while true; do
+            # Установил битрейт 6000k для идеальной картинки
+            ffmpeg -re -i "$STREAM_URL" \
+            -vcodec libx264 -preset superfast -b:v 6000k -maxrate 8000k -bufsize 12000k \
+            -pix_fmt yuv420p -g 50 -c:a aac -b:a 128k -ar 44100 \
+            -f flv "$TELEGRAM_KEY" || true
+            
+            echo "Nick stream crashed or disconnected. Restarting in 5 seconds..."
+            sleep 5
+          done
