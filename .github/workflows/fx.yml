@@ -1,4 +1,4 @@
-name: FX_HD_ULTRA_STREAM
+name: FX_HD_SMOOTH_STREAM
 
 on:
   workflow_dispatch:
@@ -16,23 +16,22 @@ jobs:
           KEY: ${{ secrets.TELEGRAM_KEY_FX }}
         run: |
           while true; do
-            echo "🎬 Запуск FX HD... Режим 'Кинотеатр' (7500kbps)..."
+            echo "🎬 Оптимизация потока: 5000kbps, режим 'Без лагов'..."
             
-            # Настройка для максимальной четкости в фильмах
-            # flags=lanczos дает лучший апскейл для кино
-            # tune film сохраняет детализацию кожи и текстур
+            # Мы убрали тяжелый фильтр scale (он сильно ест ресурсы)
+            # Оставили только легкий unsharp для резкости
             ffmpeg -re \
               -protocol_whitelist file,http,https,tcp,tls \
               -user_agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" \
               -headers "Accept: */*"$'\r\n'"Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"$'\r\n'"Origin: https://player.uspeh-bil.ru"$'\r\n'"Referer: https://player.uspeh-bil.ru/"$'\r\n'"Sec-Fetch-Dest: empty"$'\r\n'"Sec-Fetch-Mode: cors"$'\r\n'"Sec-Fetch-Site: cross-site"$'\r\n'"sec-ch-ua: \"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Google Chrome\";v=\"146\""$'\r\n'"sec-ch-ua-mobile: ?0"$'\r\n'"sec-ch-ua-platform: \"Linux\"" \
               -i "$URL" \
-              -vf "scale=1920:1080:flags=lanczos,unsharp=3:3:0.7:3:3:0.3" \
-              -vcodec libx264 -preset fast -crf 16 -tune film \
-              -b:v 7500k -maxrate 10000k -bufsize 15000k \
+              -vf "unsharp=3:3:0.6:3:3:0.2" \
+              -vcodec libx264 -preset veryfast -crf 20 -tune film \
+              -b:v 5000k -maxrate 6500k -bufsize 12000k \
               -pix_fmt yuv420p -g 50 \
-              -c:a aac -b:a 192k -ar 48000 \
-              -f flv "$KEY" || echo "⚠️ Поток прерван. Проверь токен!"
+              -c:a aac -b:a 128k -ar 44100 \
+              -f flv "$KEY" || echo "⚠️ Поток прерван."
 
-            echo "🔄 Перезагрузка через 10 секунд..."
-            sleep 10
+            echo "🔄 Перезапуск через 5 секунд..."
+            sleep 5
           done
