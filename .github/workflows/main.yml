@@ -1,14 +1,14 @@
 name: CN_ULTRA_HD_SIBERIA_FINAL
 
 on:
-  workflow_dispatch:      # Кнопка ручного запуска
+  workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *' # Автозапуск каждые 6 часов
+    - cron: '0 */6 * * *'
 
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # Лимит GitHub на одну задачу
+    timeout-minutes: 360
 
     steps:
       - name: Install FFmpeg
@@ -16,18 +16,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Global Stealth Stream (Corrected)
+      - name: Global Stealth Stream (Fixed)
         env:
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
-          # Прямая ссылка на сибирский поток
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
           
-          echo "🚀 Попытка запуска: Маскировка под VLC + Ultra HD (10Mbps)..."
+          echo "🚀 Попытка запуска №2: Без ошибок в параметрах..."
 
-          # timeout 350m (5ч 50мин) завершит процесс до лимита GitHub
-          # Убраны все спорные флаги, оставлена только рабочая база
-          
+          # Убрал connect_delay, оставил только рабочую базу и маскировку
           timeout 350m ffmpeg -re \
             -headers "User-Agent: VLC/3.0.18 LibVLC/3.0.18" \
             -headers "Referer: http://176.118.197.101/" \
