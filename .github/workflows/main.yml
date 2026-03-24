@@ -1,4 +1,4 @@
-name: Cartoon_Network_Final
+name: CN_10K_ULTRA_SHARP
 
 on:
   workflow_dispatch:
@@ -10,30 +10,30 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Start Stream
+      - name: Start 10Mbps Stream
         env:
           URL: ${{ secrets.STREAM_URL }}
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
-          # Проверка, что секреты подтянулись
-          if [ -z "$URL" ]; then echo "❌ Ошибка: STREAM_URL пуст!"; exit 1; fi
-          if [ -z "$KEY" ]; then echo "❌ Ошибка: TELEGRAM_KEY пуст!"; exit 1; fi
+          if [ -z "$URL" ]; then echo "❌ Ссылка пустая!"; exit 1; fi
 
           while true; do
-            echo "🎨 Трансляция Cartoon Network пошла..."
+            echo "💎 Запуск потока 10.000 kbps (Ultra Sharp Mode)..."
             
             ffmpeg -re \
-              -thread_queue_size 2048 \
+              -thread_queue_size 8192 \
               -protocol_whitelist file,http,https,tcp,tls \
               -user_agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" \
-              -headers "Accept: */*"$'\r\n'"Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"$'\r\n'"Origin: null"$'\r\n'"Referer: http://magtv.top/"$'\r\n'"Sec-Fetch-Dest: empty"$'\r\n'"Sec-Fetch-Mode: cors"$'\r\n'"Sec-Fetch-Site: cross-site"$'\r\n' \
+              -headers "Origin: https://smotret-online.tv"$'\r\n'"Referer: https://smotret-online.tv/"$'\r\n' \
               -i "$URL" \
-              -vf "unsharp=3:3:1.0:3:3:0.5" \
-              -vcodec libx264 -preset superfast -crf 17 -tune animation \
-              -b:v 5500k -maxrate 7500k -bufsize 12000k \
+              # Фильтр резкости выкручен на максимум для мультов
+              -vf "unsharp=5:5:1.2:5:5:0.6" \
+              -vcodec libx264 -preset superfast -crf 16 -profile:v high -level 4.1 -tune animation \
+              -b:v 10000k -maxrate 12000k -bufsize 20000k \
               -pix_fmt yuv420p -g 50 \
-              -c:a aac -b:a 128k -ar 44100 \
-              -f flv "$KEY" || echo "⚠️ Обрыв связи, рестарт..."
+              -c:a aac -b:a 192k -ar 48000 \
+              -f flv "$KEY" || echo "⚠️ Поток упал или не потянул битрейт."
 
+            echo "🔄 Перезапуск через 10 секунд..."
             sleep 10
           done
