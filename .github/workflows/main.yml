@@ -1,4 +1,4 @@
-name: CN_ULTRA_HD_LOGO_OVERLAY
+name: CN_ULTRA_HD_INFINITY_BRANDED
 
 on:
   workflow_dispatch:
@@ -8,38 +8,44 @@ on:
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 360 # 6 часов лимита GitHub
 
     steps:
-      - name: Install Tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg imagemagick
+      - name: Install FFmpeg & Tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg imagemagick
 
-      - name: Create Logo PNG
-        # Создаем прозрачную картинку с белым текстом @cnworldwide
+      - name: Create Pro Logo
+        # Создаем лого с тенью для лучшей видимости
         run: |
-          convert -size 400x100 xc:none -pointsize 40 -fill "rgba(255,255,255,0.6)" \
-          -gravity center -draw "text 0,0 '@cnworldwide'" logo.png
+          convert -size 400x100 xc:none -pointsize 45 -fill "white" -gravity center \
+          -draw "drop-shadow(2,2,3,black) text 0,0 '@cnworldwide'" logo.png
 
-      - name: Stream with Image Overlay
+      - name: Infinite Ultra Stream
         env:
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
           
-          # Используем фильтр overlay: накладываем logo.png в правый верхний угол
-          # x=main_w-overlay_w-50 : y=50 (отступ 50 пикселей)
+          echo "🚀 Запуск вещания в 10Мбит/с с авто-рестартом..."
           
-          timeout 350m ffmpeg -re \
-            -headers "User-Agent: VLC/3.0.18 LibVLC/3.0.18" \
-            -headers "Referer: http://176.118.197.101/" \
-            -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 30 \
-            -i "$URL" \
-            -i logo.png \
-            -filter_complex "[0:v]unsharp=5:5:1.2:5:5:0.6[v];[v][1:v]overlay=main_w-overlay_w-50:50" \
-            -vcodec libx264 -preset superfast -crf 17 -tune animation \
-            -b:v 9000k -maxrate 11000k -bufsize 18000k \
-            -pix_fmt yuv420p -g 50 \
-            -c:a aac -b:a 192k -ar 48000 \
-            -f flv "$KEY"
+          # Цикл перезапуска
+          while true; do
+            echo "🎬 Эфир пошел..."
+            
+            ffmpeg -re \
+              -headers "User-Agent: VLC/3.0.18 LibVLC/3.0.18" \
+              -headers "Referer: http://176.118.197.101/" \
+              -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 10 \
+              -fflags +genpts+discardcorrupt \
+              -i "$URL" \
+              -i logo.png \
+              -filter_complex "[0:v]unsharp=5:5:1.2:5:5:0.6[v];[v][1:v]overlay=main_w-overlay_w-50:50" \
+              -vcodec libx264 -preset superfast -tune animation \
+              -b:v 10000k -maxrate 12000k -bufsize 20000k -pix_fmt yuv420p -g 50 \
+              -af "highpass=f=50, lowpass=f=15000, volume=1.2" \
+              -c:a aac -b:a 256k -ar 48000 \
+              -f flv "$KEY" || echo "⚠️ Поток прерван сервером..."
+              
+            echo "🔄 Переподключение через 5 секунд..."
+            sleep 5
+          done
