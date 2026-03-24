@@ -1,31 +1,36 @@
-name: CN_Continuous_Stream_6H_Limit
+name: CN_ULTRA_HD_24_7
 
 on:
-  workflow_dispatch:
-  # Можно добавить автозапуск каждые 6 часов, если хочешь полную автономность
-  # schedule:
-  #   - cron: '0 */6 * * *'
+  workflow_dispatch:      # Кнопка ручного запуска
+  schedule:
+    - cron: '0 */6 * * *' # Автозапуск каждые 6 часов (00:00, 06:00, 12:00, 18:00 UTC)
 
 jobs:
   stream:
     runs-on: ubuntu-latest
-    # Ставим общий лимит времени для всей джобы, чтобы не было сюрпризов
-    timeout-minutes: 360 
-    
+    timeout-minutes: 360  # Жесткий лимит GitHub на одну задачу
+
     steps:
       - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
-      - name: Execute 5h 50m Loop
+      - name: Start 10Mbps Stream (Siberia Source)
         env:
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
+          # Прямой IP того самого провайдера из Анжеро-Судженска
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
           
-          # Запускаем ffmpeg с лимитом времени чуть меньше 6 часов
-          # Это позволит скрипту завершиться "успешно" до лимита GitHub
-          timeout 350m ffmpeg -re \
-            -thread_queue_size 8192 \
+          echo "🚀 Запуск трансляции Cartoon Network..."
+          echo "📍 Источник: Сибирь, ООО 'Интернет 42'"
+          echo "🎬 Качество: 10.000 kbps + Unsharp Filter"
+
+          # timeout 350m (5ч 50мин) завершит ffmpeg до того, как GitHub убьет джобу принудительно.
+          # Это позволяет избежать ошибок в логах и "зависаний".
+          
+          timeout 350m ffmpeg -re -connect_delay 10 -thread_queue_size 8192 \
             -protocol_whitelist file,http,https,tcp,tls \
             -i "$URL" \
             -vf "unsharp=5:5:1.2:5:5:0.6" \
@@ -33,4 +38,7 @@ jobs:
             -b:v 10000k -maxrate 12000k -bufsize 20000k \
             -pix_fmt yuv420p -g 50 \
             -c:a aac -b:a 192k -ar 48000 \
-            -f flv "$KEY" || echo "⏰ Время сессии истекло, плановая перезагрузка..."
+            -f flv "$KEY" || echo "⏰ Сессия завершена (плановый рестарт или обрыв связи)."
+
+      - name: Session Ended
+        run: echo "✅ 6-часовой цикл завершен. Следующий запуск по расписанию или вручную."
