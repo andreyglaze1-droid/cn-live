@@ -1,4 +1,4 @@
-name: CN_ULTRA_HD_BRANDED_V3
+name: CN_ULTRA_HD_LOGO_OVERLAY
 
 on:
   workflow_dispatch:
@@ -11,37 +11,35 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: Install FFmpeg and Universal Fonts
+      - name: Install Tools
         run: |
           sudo apt-get update
-          # Устанавливаем базовые шрифты и утилиту для их регистрации в системе
-          sudo apt-get install -y ffmpeg fonts-liberation fontconfig
-          # Обновляем кэш шрифтов, чтобы FFmpeg их сразу увидел
-          fc-cache -fv
+          sudo apt-get install -y ffmpeg imagemagick
 
-      - name: Branded Stealth Stream
+      - name: Create Logo PNG
+        # Создаем прозрачную картинку с белым текстом @cnworldwide
+        run: |
+          convert -size 400x100 xc:none -pointsize 40 -fill "rgba(255,255,255,0.6)" \
+          -gravity center -draw "text 0,0 '@cnworldwide'" logo.png
+
+      - name: Stream with Image Overlay
         env:
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
           
-          echo "🚀 Запуск вещания @cnworldwide (Версия с гарантированным текстом)..."
-
-          # Настройки текста: 
-          # x=50, y=50 (Левый верхний угол)
-          # fontsize=50 (Крупно)
-          # fontcolor=white@0.8 (Почти непрозрачный)
-          # shadow=black (Черный контур, чтобы читалось на белом фоне)
+          # Используем фильтр overlay: накладываем logo.png в правый верхний угол
+          # x=main_w-overlay_w-50 : y=50 (отступ 50 пикселей)
           
           timeout 350m ffmpeg -re \
             -headers "User-Agent: VLC/3.0.18 LibVLC/3.0.18" \
             -headers "Referer: http://176.118.197.101/" \
             -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 30 \
-            -thread_queue_size 8192 \
             -i "$URL" \
-            -vf "unsharp=5:5:1.2:5:5:0.6,drawtext=text='@cnworldwide':x=50:y=50:fontsize=50:fontcolor=white@0.8:shadowcolor=black@0.9:shadowx=3:shadowy=3" \
+            -i logo.png \
+            -filter_complex "[0:v]unsharp=5:5:1.2:5:5:0.6[v];[v][1:v]overlay=main_w-overlay_w-50:50" \
             -vcodec libx264 -preset superfast -crf 17 -tune animation \
             -b:v 9000k -maxrate 11000k -bufsize 18000k \
             -pix_fmt yuv420p -g 50 \
             -c:a aac -b:a 192k -ar 48000 \
-            -f flv "$KEY" || echo "⏰ Сессия завершена."
+            -f flv "$KEY"
