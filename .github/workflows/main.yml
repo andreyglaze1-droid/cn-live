@@ -1,4 +1,4 @@
-name: CN_10K_ULTRA_SHARP
+name: CN_IP_Direct_10K
 
 on:
   workflow_dispatch:
@@ -10,30 +10,26 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Start 10Mbps Stream
+      - name: Start 10Mbps Stream from IP
         env:
-          URL: ${{ secrets.STREAM_URL }}
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
-          if [ -z "$URL" ]; then echo "❌ Ссылка пустая!"; exit 1; fi
+          # Твоя рабочая ссылка
+          URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
 
           while true; do
-            echo "💎 Запуск потока 10.000 kbps (Ultra Sharp Mode)..."
+            echo "🚀 Запуск прямого эфира с IP-сервера (10.000 kbps)..."
             
-            ffmpeg -re \
-              -thread_queue_size 8192 \
+            ffmpeg -re -connect_delay 10 -thread_queue_size 8192 \
               -protocol_whitelist file,http,https,tcp,tls \
-              -user_agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" \
-              -headers "Origin: https://smotret-online.tv"$'\r\n'"Referer: https://smotret-online.tv/"$'\r\n' \
               -i "$URL" \
-              # Фильтр резкости выкручен на максимум для мультов
               -vf "unsharp=5:5:1.2:5:5:0.6" \
-              -vcodec libx264 -preset superfast -crf 16 -profile:v high -level 4.1 -tune animation \
+              -vcodec libx264 -preset superfast -crf 16 -tune animation \
               -b:v 10000k -maxrate 12000k -bufsize 20000k \
               -pix_fmt yuv420p -g 50 \
               -c:a aac -b:a 192k -ar 48000 \
-              -f flv "$KEY" || echo "⚠️ Поток упал или не потянул битрейт."
+              -f flv "$KEY" || echo "⚠️ Сервер временно недоступен или битрейт слишком высок."
 
-            echo "🔄 Перезапуск через 10 секунд..."
-            sleep 10
+            echo "🔄 Рестарт через 5 секунд..."
+            sleep 5
           done
