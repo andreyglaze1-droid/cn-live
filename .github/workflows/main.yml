@@ -1,36 +1,37 @@
-name: CN_ULTRA_HD_SIBERIA_STEALTH
+name: CN_ULTRA_HD_SIBERIA_FINAL
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:      # Кнопка ручного запуска
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */6 * * *' # Автозапуск каждые 6 часов
 
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 360  # Лимит GitHub на одну задачу
 
     steps:
       - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
-      - name: Global Stealth Stream
+      - name: Global Stealth Stream (Corrected)
         env:
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
-          # Прямая ссылка на поток (Сибирь, ООО "Интернет 42")
+          # Прямая ссылка на сибирский поток
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
           
-          echo "🚀 Запуск трансляции в режиме Stealth (Маскировка под VLC)..."
-          
-          # Мы используем тайм-аут 350 минут (5ч 50мин), чтобы GitHub не убил джобу с ошибкой
-          # Добавлены флаги переподключения и заголовки VLC для обхода банов
+          echo "🚀 Попытка запуска: Маскировка под VLC + Ultra HD (10Mbps)..."
+
+          # timeout 350m (5ч 50мин) завершит процесс до лимита GitHub
+          # Убраны все спорные флаги, оставлена только рабочая база
           
           timeout 350m ffmpeg -re \
-            -user_agent "VLC/3.0.18 LibVLC/3.0.18" \
-            -headers "Referer: http://176.118.197.101/\r\n" \
-            -headers "Origin: http://176.118.197.101\r\n" \
-            -connect_delay 20 -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 30 \
+            -headers "User-Agent: VLC/3.0.18 LibVLC/3.0.18" \
+            -headers "Referer: http://176.118.197.101/" \
+            -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 30 \
             -thread_queue_size 8192 \
             -protocol_whitelist file,http,https,tcp,tls \
             -i "$URL" \
