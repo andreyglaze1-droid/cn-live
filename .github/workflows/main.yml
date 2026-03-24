@@ -1,4 +1,4 @@
-name: CN_ULTRA_HD_SIBERIA_FINAL
+name: CN_ULTRA_HD_BRANDED
 
 on:
   workflow_dispatch:
@@ -16,25 +16,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Global Stealth Stream (Fixed)
+      - name: Branded Stealth Stream
         env:
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
           
-          echo "🚀 Попытка запуска №2: Без ошибок в параметрах..."
+          echo "🚀 Запуск брендированного вещания @cnworldwide..."
 
-          # Убрал connect_delay, оставил только рабочую базу и маскировку
+          # Добавили фильтр drawtext: шрифт стандартный, цвет белый с прозрачностью 0.5
+          # x=w-tw-50 (отступ 50 пкс справа), y=50 (отступ 50 пкс сверху)
+          
           timeout 350m ffmpeg -re \
             -headers "User-Agent: VLC/3.0.18 LibVLC/3.0.18" \
             -headers "Referer: http://176.118.197.101/" \
             -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 30 \
             -thread_queue_size 8192 \
-            -protocol_whitelist file,http,https,tcp,tls \
             -i "$URL" \
-            -vf "unsharp=5:5:1.2:5:5:0.6" \
-            -vcodec libx264 -preset superfast -crf 16 -tune animation \
-            -b:v 10000k -maxrate 12000k -bufsize 20000k \
+            -vf "unsharp=5:5:1.2:5:5:0.6,drawtext=text='@cnworldwide':x=w-tw-50:y=50:fontsize=40:fontcolor=white@0.5:shadowcolor=black:shadowx=2:shadowy=2" \
+            -vcodec libx264 -preset superfast -crf 17 -tune animation \
+            -b:v 9000k -maxrate 11000k -bufsize 18000k \
             -pix_fmt yuv420p -g 50 \
             -c:a aac -b:a 192k -ar 48000 \
-            -f flv "$KEY" || echo "⏰ Сессия завершена."
+            -f flv "$KEY"
