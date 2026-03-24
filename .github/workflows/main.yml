@@ -1,4 +1,4 @@
-name: CN_IP_Direct_10K
+name: CN_IP_Direct_Fixed
 
 on:
   workflow_dispatch:
@@ -10,17 +10,17 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Start 10Mbps Stream from IP
+      - name: Start 10Mbps Stream
         env:
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
-          # Твоя рабочая ссылка
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
 
           while true; do
-            echo "🚀 Запуск прямого эфира с IP-сервера (10.000 kbps)..."
+            echo "🚀 Запуск исправленного потока (10.000 kbps)..."
             
-            ffmpeg -re -connect_delay 10 -thread_queue_size 8192 \
+            ffmpeg -re \
+              -thread_queue_size 8192 \
               -protocol_whitelist file,http,https,tcp,tls \
               -i "$URL" \
               -vf "unsharp=5:5:1.2:5:5:0.6" \
@@ -28,7 +28,7 @@ jobs:
               -b:v 10000k -maxrate 12000k -bufsize 20000k \
               -pix_fmt yuv420p -g 50 \
               -c:a aac -b:a 192k -ar 48000 \
-              -f flv "$KEY" || echo "⚠️ Сервер временно недоступен или битрейт слишком высок."
+              -f flv "$KEY" || echo "⚠️ Поток прервался."
 
             echo "🔄 Рестарт через 5 секунд..."
             sleep 5
