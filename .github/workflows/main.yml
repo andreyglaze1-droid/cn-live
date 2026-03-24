@@ -1,4 +1,4 @@
-name: CN_ULTRA_HD_INFINITY_BRANDED
+name: CN_ULTRA_12MBPS_EXTREME
 
 on:
   workflow_dispatch:
@@ -8,44 +8,38 @@ on:
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 360 # 6 часов лимита GitHub
+    timeout-minutes: 360 # 6 часов лимита
 
     steps:
-      - name: Install FFmpeg & Tools
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg imagemagick
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Create Pro Logo
-        # Создаем лого с тенью для лучшей видимости
-        run: |
-          convert -size 400x100 xc:none -pointsize 45 -fill "white" -gravity center \
-          -draw "drop-shadow(2,2,3,black) text 0,0 '@cnworldwide'" logo.png
-
-      - name: Infinite Ultra Stream
+      - name: Extreme Stream Loop
         env:
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
           
-          echo "🚀 Запуск вещания в 10Мбит/с с авто-рестартом..."
+          echo "📡 Запуск экстремального вещания 12к..."
           
-          # Цикл перезапуска
+          # Бесконечный цикл живучести
           while true; do
-            echo "🎬 Эфир пошел..."
+            echo "🎬 Эфир: 12000kbps..."
             
+            # Мы убрали фильтры (-vf), оставили только чистую перепаковку с мощным битрейтом
             ffmpeg -re \
               -headers "User-Agent: VLC/3.0.18 LibVLC/3.0.18" \
               -headers "Referer: http://176.118.197.101/" \
-              -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 10 \
+              -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 2 \
               -fflags +genpts+discardcorrupt \
               -i "$URL" \
-              -i logo.png \
-              -filter_complex "[0:v]unsharp=5:5:1.2:5:5:0.6[v];[v][1:v]overlay=main_w-overlay_w-50:50" \
-              -vcodec libx264 -preset superfast -tune animation \
-              -b:v 10000k -maxrate 12000k -bufsize 20000k -pix_fmt yuv420p -g 50 \
-              -af "highpass=f=50, lowpass=f=15000, volume=1.2" \
+              -vcodec libx264 -preset ultrafast -tune animation \
+              -b:v 12000k -maxrate 14000k -bufsize 24000k \
+              -pix_fmt yuv420p -g 100 \
+              -af "volume=1.2" \
               -c:a aac -b:a 256k -ar 48000 \
-              -f flv "$KEY" || echo "⚠️ Поток прерван сервером..."
+              -f flv "$KEY" || echo "⚠️ Разрыв соединения..."
               
-            echo "🔄 Переподключение через 5 секунд..."
-            sleep 5
+            echo "🔄 Мгновенный перезапуск через 2 секунды..."
+            sleep 2
           done
