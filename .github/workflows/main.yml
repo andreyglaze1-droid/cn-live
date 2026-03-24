@@ -1,4 +1,4 @@
-name: CN_ULTRA_HD_BRANDED_FINAL
+name: CN_ULTRA_HD_BRANDED_V3
 
 on:
   workflow_dispatch:
@@ -11,11 +11,13 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: Install FFmpeg and Fonts
+      - name: Install FFmpeg and Universal Fonts
         run: |
           sudo apt-get update
-          # Устанавливаем сам ffmpeg и пакет шрифтов, чтобы водяной знак точно отрисовался
-          sudo apt-get install -y ffmpeg fonts-liberation
+          # Устанавливаем базовые шрифты и утилиту для их регистрации в системе
+          sudo apt-get install -y ffmpeg fonts-liberation fontconfig
+          # Обновляем кэш шрифтов, чтобы FFmpeg их сразу увидел
+          fc-cache -fv
 
       - name: Branded Stealth Stream
         env:
@@ -23,10 +25,13 @@ jobs:
         run: |
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
           
-          echo "🚀 Запуск брендированного вещания @cnworldwide..."
+          echo "🚀 Запуск вещания @cnworldwide (Версия с гарантированным текстом)..."
 
-          # Используем путь к шрифту LiberationSans-Bold (стандарт в Ubuntu)
-          # Текст будет в правом верхнем углу с небольшим отступом (50px)
+          # Настройки текста: 
+          # x=50, y=50 (Левый верхний угол)
+          # fontsize=50 (Крупно)
+          # fontcolor=white@0.8 (Почти непрозрачный)
+          # shadow=black (Черный контур, чтобы читалось на белом фоне)
           
           timeout 350m ffmpeg -re \
             -headers "User-Agent: VLC/3.0.18 LibVLC/3.0.18" \
@@ -34,7 +39,7 @@ jobs:
             -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 30 \
             -thread_queue_size 8192 \
             -i "$URL" \
-            -vf "unsharp=5:5:1.2:5:5:0.6,drawtext=fontfile=/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf:text='@cnworldwide':x=w-tw-50:y=50:fontsize=44:fontcolor=white@0.6:shadowcolor=black@0.8:shadowx=2:shadowy=2" \
+            -vf "unsharp=5:5:1.2:5:5:0.6,drawtext=text='@cnworldwide':x=50:y=50:fontsize=50:fontcolor=white@0.8:shadowcolor=black@0.9:shadowx=3:shadowy=3" \
             -vcodec libx264 -preset superfast -crf 17 -tune animation \
             -b:v 9000k -maxrate 11000k -bufsize 18000k \
             -pix_fmt yuv420p -g 50 \
