@@ -1,35 +1,36 @@
-name: CN_IP_Direct_Fixed
+name: CN_Continuous_Stream_6H_Limit
 
 on:
   workflow_dispatch:
+  # Можно добавить автозапуск каждые 6 часов, если хочешь полную автономность
+  # schedule:
+  #   - cron: '0 */6 * * *'
 
 jobs:
   stream:
     runs-on: ubuntu-latest
+    # Ставим общий лимит времени для всей джобы, чтобы не было сюрпризов
+    timeout-minutes: 360 
+    
     steps:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Start 10Mbps Stream
+      - name: Execute 5h 50m Loop
         env:
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
-
-          while true; do
-            echo "🚀 Запуск исправленного потока (10.000 kbps)..."
-            
-            ffmpeg -re \
-              -thread_queue_size 8192 \
-              -protocol_whitelist file,http,https,tcp,tls \
-              -i "$URL" \
-              -vf "unsharp=5:5:1.2:5:5:0.6" \
-              -vcodec libx264 -preset superfast -crf 16 -tune animation \
-              -b:v 10000k -maxrate 12000k -bufsize 20000k \
-              -pix_fmt yuv420p -g 50 \
-              -c:a aac -b:a 192k -ar 48000 \
-              -f flv "$KEY" || echo "⚠️ Поток прервался."
-
-            echo "🔄 Рестарт через 5 секунд..."
-            sleep 5
-          done
+          
+          # Запускаем ffmpeg с лимитом времени чуть меньше 6 часов
+          # Это позволит скрипту завершиться "успешно" до лимита GitHub
+          timeout 350m ffmpeg -re \
+            -thread_queue_size 8192 \
+            -protocol_whitelist file,http,https,tcp,tls \
+            -i "$URL" \
+            -vf "unsharp=5:5:1.2:5:5:0.6" \
+            -vcodec libx264 -preset superfast -crf 16 -tune animation \
+            -b:v 10000k -maxrate 12000k -bufsize 20000k \
+            -pix_fmt yuv420p -g 50 \
+            -c:a aac -b:a 192k -ar 48000 \
+            -f flv "$KEY" || echo "⏰ Время сессии истекло, плановая перезагрузка..."
