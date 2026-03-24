@@ -1,36 +1,37 @@
-name: CN_ULTRA_HD_24_7
+name: CN_ULTRA_HD_SIBERIA_STEALTH
 
 on:
-  workflow_dispatch:      # Кнопка ручного запуска
+  workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *' # Автозапуск каждые 6 часов (00:00, 06:00, 12:00, 18:00 UTC)
+    - cron: '0 */6 * * *'
 
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # Жесткий лимит GitHub на одну задачу
+    timeout-minutes: 360
 
     steps:
       - name: Install FFmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Start 10Mbps Stream (Siberia Source)
+      - name: Global Stealth Stream
         env:
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
-          # Прямой IP того самого провайдера из Анжеро-Судженска
+          # Прямая ссылка на поток (Сибирь, ООО "Интернет 42")
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
           
-          echo "🚀 Запуск трансляции Cartoon Network..."
-          echo "📍 Источник: Сибирь, ООО 'Интернет 42'"
-          echo "🎬 Качество: 10.000 kbps + Unsharp Filter"
-
-          # timeout 350m (5ч 50мин) завершит ffmpeg до того, как GitHub убьет джобу принудительно.
-          # Это позволяет избежать ошибок в логах и "зависаний".
+          echo "🚀 Запуск трансляции в режиме Stealth (Маскировка под VLC)..."
           
-          timeout 350m ffmpeg -re -connect_delay 10 -thread_queue_size 8192 \
+          # Мы используем тайм-аут 350 минут (5ч 50мин), чтобы GitHub не убил джобу с ошибкой
+          # Добавлены флаги переподключения и заголовки VLC для обхода банов
+          
+          timeout 350m ffmpeg -re \
+            -user_agent "VLC/3.0.18 LibVLC/3.0.18" \
+            -headers "Referer: http://176.118.197.101/\r\n" \
+            -headers "Origin: http://176.118.197.101\r\n" \
+            -connect_delay 20 -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 30 \
+            -thread_queue_size 8192 \
             -protocol_whitelist file,http,https,tcp,tls \
             -i "$URL" \
             -vf "unsharp=5:5:1.2:5:5:0.6" \
@@ -38,7 +39,4 @@ jobs:
             -b:v 10000k -maxrate 12000k -bufsize 20000k \
             -pix_fmt yuv420p -g 50 \
             -c:a aac -b:a 192k -ar 48000 \
-            -f flv "$KEY" || echo "⏰ Сессия завершена (плановый рестарт или обрыв связи)."
-
-      - name: Session Ended
-        run: echo "✅ 6-часовой цикл завершен. Следующий запуск по расписанию или вручную."
+            -f flv "$KEY" || echo "⏰ Сессия завершена."
