@@ -1,0 +1,23 @@
+name: MTProto Localtonet
+on: 
+  workflow_dispatch:
+
+jobs:
+  run-proxy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start MTProto Docker
+        run: |
+          docker run -d -p 3128:443 --name=mtproto-proxy \
+          -e SECRET=549a35f83d32320233b59f743fb2c957 \
+          telegrammessenger/proxy:latest
+
+      - name: Install and Run Localtonet
+        run: |
+          curl -L https://localtonet.com/download/localtonet-linux-x64.zip -o localtonet.zip
+          unzip localtonet.zip
+          chmod +x localtonet
+          # Запускаем туннель с твоим ключом (TCP порт 3128)
+          ./localtonet -t OdMPknfiCHqsTX4vDWV3artcmjKYxeB8N authtoken
+          # Команда ниже нужна, чтобы джоба не закрылась сразу
+          sleep 21600
