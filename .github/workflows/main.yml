@@ -1,45 +1,82 @@
-name: CN_ULTRA_12MBPS_EXTREME
+name: CN_STABLE_STREAM
 
 on:
   workflow_dispatch:
   schedule:
     - cron: '0 */6 * * *'
 
+concurrency:
+  group: cn-telegram-stream
+  cancel-in-progress: true
+
 jobs:
   stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 360 # 6 часов лимита
+    timeout-minutes: 355
 
     steps:
       - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
-      - name: Extreme Stream Loop
+      - name: Stable Stream Loop
         env:
           KEY: ${{ secrets.TELEGRAM_KEY }}
         run: |
           URL="http://176.118.197.101/Cartoon_Network/index.m3u8"
-          
-          echo "📡 Запуск экстремального вещания 12к..."
-          
-          # Бесконечный цикл живучести
+
+          echo "📡 Запуск стабильного вещания..."
+
           while true; do
-            echo "🎬 Эфир: 12000kbps..."
-            
-            # Мы убрали фильтры (-vf), оставили только чистую перепаковку с мощным битрейтом
-            ffmpeg -re \
-              -headers "User-Agent: VLC/3.0.18 LibVLC/3.0.18" \
+            echo "🎬 Старт эфира..."
+
+            timeout 350m ffmpeg \
+              -hide_banner \
+              -loglevel warning \
+              -stats \
+              -nostdin \
+              -re \
+              -user_agent "VLC/3.0.18 LibVLC/3.0.18" \
               -headers "Referer: http://176.118.197.101/" \
-              -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 2 \
-              -fflags +genpts+discardcorrupt \
+              -rw_timeout 15000000 \
+              -timeout 15000000 \
+              -reconnect 1 \
+              -reconnect_at_eof 1 \
+              -reconnect_streamed 1 \
+              -reconnect_on_network_error 1 \
+              -reconnect_delay_max 5 \
+              -fflags +genpts+discardcorrupt+nobuffer \
+              -flags +low_delay \
+              -thread_queue_size 4096 \
+              -analyzeduration 1000000 \
+              -probesize 1000000 \
               -i "$URL" \
-              -vcodec libx264 -preset ultrafast -tune animation \
-              -b:v 12000k -maxrate 14000k -bufsize 24000k \
-              -pix_fmt yuv420p -g 100 \
-              -af "volume=1.2" \
-              -c:a aac -b:a 256k -ar 48000 \
-              -f flv "$KEY" || echo "⚠️ Разрыв соединения..."
-              
-            echo "🔄 Мгновенный перезапуск через 2 секунды..."
-            sleep 2
+              -map 0:v:0 \
+              -map 0:a:0? \
+              -vf "scale=-2:720,fps=25,format=yuv420p" \
+              -c:v libx264 \
+              -preset veryfast \
+              -tune animation \
+              -profile:v main \
+              -level 4.1 \
+              -b:v 4500k \
+              -maxrate 4500k \
+              -bufsize 9000k \
+              -g 50 \
+              -keyint_min 50 \
+              -sc_threshold 0 \
+              -x264-params "nal-hrd=cbr:force-cfr=1" \
+              -c:a aac \
+              -b:a 160k \
+              -ar 44100 \
+              -ac 2 \
+              -af "aresample=async=1:first_pts=0,volume=1.1" \
+              -max_muxing_queue_size 4096 \
+              -flvflags no_duration_filesize \
+              -f flv "$KEY"
+
+            echo "⚠️ Поток оборвался или GitHub остановил процесс."
+            echo "🔄 Перезапуск через 5 секунд..."
+            sleep 5
           done
